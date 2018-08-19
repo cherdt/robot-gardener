@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Garden-Bot: a flood-fill demo</title>
+
+<style type="text/css">
+    #garden { 
+    	background-color: green;
+    	color: yellow;
+    	font-family: monospace;
+    }
+    .highlight {
+    	background-color: pink;
+    	color: black;
+    }
+</style>
+
+</head>
+<body>
+
+<div id="garden">
+
+</div>
+
+<form>
+<input type="button" value="Acquire Next Target">
+</form>
+
+<script type="text/javascript">
+
+    parseQS = function () {
+    	"use strict";
+    	var i, kv, key, val, json, qsArray;
+        // Remove leading question mark ("?") and split into array of key/value pairs
+        qsArray = location.search.slice(1).split("&");
+        // Initialize object to store key/value pairs
+        json = {};
+        // Loop through key/value pairs and separate into keys and values
+        for (i = 0; i < qsArray.length; i++) {
+            kv = qsArray[i].split("=");
+            key = kv[0];
+            val;
+            if (kv.length === 1) {
+            	val = key;
+            } else {
+	            // A key may be present without a value, so set a placeholder value
+	            val = kv[1];            	
+            }
+            json[key] = val;
+        }
+        return json;
+    };
+
+    var state = {
+        "w": "20",
+        "h": "10",
+        "str": "...................." +
+               "...................." +
+               "...................." +
+               "...................." +
+               "...................." +
+               "...................." +
+               "...................." +
+               "...................." +
+               "...................." +
+               "...................."
+    };
+
+	// Is a location parameter "str" specified?
+    var json = parseQS();
+    if (json.w !== undefined && json.h !== undefined && json.str !== undefined) {
+    	state.w = json.w;
+    	state.h = json.h;
+    	state.str = decodeURIComponent(json.str);
+    }
+
+    var content = "";
+    var str = state.str.split("");
+    var i = 0;
+    var j = 0;
+    for (i = 0; i < state.h; i += 1) {
+    	for (j = 0; j < state.w; j += 1) {
+    		content += str[(i * state.w) + j];
+    	}
+    	content += "<br>";
+    }
+    document.getElementById("garden").innerHTML = content;
+
+    var garden = {
+    	container: document.getElementById("garden"),
+
+    	create: function (w, h, str) {
+    		"use strict";
+    		var content = "";
+		    var str = state.str.split("");
+		    var i = 0;
+		    var j = 0;
+		    for (i = 0; i < state.h; i += 1) {
+		    	for (j = 0; j < state.w; j += 1) {
+		    		content += str[(i * state.w) + j];
+		    	}
+		    	content += "<br>";
+		    }
+		    this.container.innerHTML = content;
+    	}
+    }
+</script>
+
+</body>
+</html>
