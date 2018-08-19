@@ -10,6 +10,25 @@
     	color: yellow;
     	font-family: monospace;
     }
+    #log {
+    	background-color: black;
+    	color: #eee;
+    	font-family: monospace;
+    }
+    .robot {
+    	background-color: black;
+    	font-weight: bold;
+    }
+    .flower {
+    	background-color: black;
+    	color: red;
+    	font-weight: bold;
+    }
+    .weed {
+    	background-color: black;
+    	color: yellow;
+    	font-weight: bold;
+    }
     .highlight {
     	background-color: pink;
     	color: black;
@@ -24,8 +43,11 @@
 </div>
 
 <form>
-<input type="button" value="Acquire Next Target">
+<input type="button" value="Acquire Next Target" onclick="garden.acquireTarget(); return false;">
 </form>
+
+<div id="log">
+</div>
 
 <script type="text/javascript">
 
@@ -52,6 +74,11 @@
         return json;
     };
 
+    log = function (str) {
+    	"use strict";
+    	document.getElementById("log").innerHTML += "<br>" + str;
+    }
+
     var state = {
         "w": "20",
         "h": "10",
@@ -75,36 +102,150 @@
     	state.str = decodeURIComponent(json.str);
     }
 
-    var content = "";
-    var str = state.str.split("");
-    var i = 0;
-    var j = 0;
-    for (i = 0; i < state.h; i += 1) {
-    	for (j = 0; j < state.w; j += 1) {
-    		content += str[(i * state.w) + j];
+    function Node (displayValue, description, x, y, stepsFromRobot) {
+    	"use strict";
+    	this.displayValue = displayValue;
+    	this.description = description;
+    	this.x = x;
+    	this.y = y;
+    	this.adjacentNodes = [];
+    	this.immediatePredecessors = [];
+    	this.hasBeenQueued = false;
+    	if (stepsFromRobot === undefined) {
+        	this.stepsFromRobot = Number.POSITIVE_INFINITY;
+    	} else {
+    		this.stepsFromRobot = stepsFromRobot;
     	}
-    	content += "<br>";
+    	this.isTarget = function () {
+    		return this.displayValue !== "." && this.stepsFromRobot !== 0;
+    	};
+    	this.addImmediatePredecessor = function (node) {
+    		this.immediatePredecessors.push(node);
+    	};
+    	this.getAdacentNodes = function () {
+
+    		return [];
+    	}
     }
-    document.getElementById("garden").innerHTML = content;
 
     var garden = {
+    	char: "",
+    	node: [],
+    	width: 0,
+    	height: 0,
     	container: document.getElementById("garden"),
+    	robot: new Node("<span class='robot'>@</span>","garden-bot",0,0,0),
+    	flower: new Node("<span class='flower'>f</span>","flower",8,3),
+    	weed: new Node("<span class='weed'>w</span>","weed",7,2),
 
-    	create: function (w, h, str) {
+    	acquireTarget: function () {
+            "use strict";
+            var isTargetAcquired = false;
+            var targetNode;
+            var queue = [this.robot];
+            var currentNode;
+            var node;
+
+            log("Acquiring target...");
+            console.log(isTargetAcquired);
+            console.log(queue);
+            console.log(this.robot);
+            while (!isTargetAcquired && queue.length > 0) {
+                currentNode = queue.shift();
+                console.log("checking node" + currentNode.x + "," + currentNode.y);
+                for (node of this.getAdacentNodes(currentNode)) {
+                	if (node.isTarget()) {
+                		console.log("found target");
+                		log("Target acquired: " + node.description + " at " + node.x + "," + node.y);
+                		targetNode = node;
+                		isTargetAcquired = true;
+                		break;
+                	}
+                	if (!node.hasBeenQueued && node.stepsFromRobot > currentNode.stepsFromRobot) {
+                		node.stepsFromRobot = currentNode.stepsFromRobot + 1;
+                		node.addImmediatePredecessor(currentNode);
+                		queue.push(node);
+                		node.hasBeenQueued = true;
+                	}
+                }
+            }
+            return targetNode;
+    	},
+
+        getAdacentNodes: function (node) {
+            "use strict";
+            var adjacentNodes = [];
+            // we need to check 8 directions: NW, N, NE, W, E, SW, S, SE
+            // up
+            if (node.y - 1 >= 0) {
+            	// left
+	            if (node.x - 1 >= 0) {
+	            	adjacentNodes.push(this.node[node.y - 1][node.x - 1]);
+	            }
+            	// center
+				adjacentNodes.push(this.node[node.y - 1][node.x]);
+            	// right
+            	if (node.x + 1 <= this.width) {
+	            adjacentNodes.push(this.node[node.y - 1][node.x + 1]);
+	            }
+            }
+            // left
+            if (node.x - 1 >= 0) {
+            	adjacentNodes.push(this.node[node.y][node.x - 1]);
+            }
+            // right
+            if (node.x + 1 < this.width) {
+            	adjacentNodes.push(this.node[node.y][node.x + 1]);
+            }
+            // down
+            if (node.y + 1 < this.height) {
+            	// left
+	            if (node.x - 1 >= 0) {
+	            	adjacentNodes.push(this.node[node.y + 1][node.x - 1]);
+	            }
+            	// center
+				adjacentNodes.push(this.node[node.y + 1][node.x]);
+            	// right
+            	if (node.x + 1 <= this.width) {
+	                adjacentNodes.push(this.node[node.y + 1][node.x + 1]);
+	            }
+            }
+            return adjacentNodes;
+        },
+
+    	draw: function (w, h, str) {
     		"use strict";
     		var content = "";
-		    var str = state.str.split("");
 		    var i = 0;
 		    var j = 0;
-		    for (i = 0; i < state.h; i += 1) {
-		    	for (j = 0; j < state.w; j += 1) {
-		    		content += str[(i * state.w) + j];
+		    this.width = w;
+		    this.height = h;
+		    this.char = str.split("");
+		    for (i = 0; i < h; i += 1) {
+		    	this.node.push([]);
+		    	for (j = 0; j < w; j += 1) {
+		    		if (this.robot.x === j && this.robot.y === i) {
+		    			this.node[i].push(this.robot);
+		    			content += this.robot.displayValue;
+		    		} else if (this.flower.x === j && this.flower.y === i) {
+		    			this.node[i].push(this.flower);
+		    			content += this.flower.displayValue;
+		    		} else if (this.weed.x === j && this.weed.y === i) {
+		    			this.node[i].push(this.weed);
+		    			content += this.weed.displayValue;
+		    		} else {
+		    			this.node[i].push(new Node(".", "dirt", j, i));
+    		    		content += this.char[(i * w) + j];
+		    		}
+
 		    	}
 		    	content += "<br>";
 		    }
 		    this.container.innerHTML = content;
     	}
     }
+
+    garden.draw(state.w, state.h, state.str);
 </script>
 
 </body>
