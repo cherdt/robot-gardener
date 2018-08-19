@@ -9,17 +9,27 @@
     	background-color: green;
     	color: yellow;
     	font-family: monospace;
+    	font-size: xx-large;
+    	text-align: center;
+    	width: 20em;
     }
     #log {
     	background-color: black;
     	color: #eee;
     	font-family: monospace;
+    	height: 20em;
+    	overflow-y: scroll;
     }
     .robot {
     	background-color: black;
     	font-weight: bold;
     }
     .flower {
+    	background-color: #333;
+    	color: #933;
+    	font-weight: bold;
+    }
+    .happyflower {
     	background-color: black;
     	color: red;
     	font-weight: bold;
@@ -38,12 +48,25 @@
 </head>
 <body>
 
+<h1>Robot Gardener</h1>
+<p>I made this to experiment with the flood fill algorithm.</p>
+<p>There are 5 different kinds of squares:</p>
+<ul>
+	<li>@ - a robot</li>
+	<li>. - dirt</li>
+	<li>w - a weed</li>
+	<li>f - a flower that needs attention</li>
+	<li>F - a happy flower</li>
+</ul>
+
 <div id="garden">
 
 </div>
 
 <form>
-<input type="button" value="Acquire Next Target" onclick="garden.acquireTarget(); return false;">
+<input type="button" value="Find a Plant to Tend" onclick="garden.acquireTarget(); garden.approachTarget(); return false;">
+<input type="button" value="Remove Weed" onclick="garden.removeWeed(); return false;">
+<input type="button" value="Water Flower" onclick="garden.waterFlower(); return false;">
 </form>
 
 <div id="log">
@@ -74,10 +97,14 @@
         return json;
     };
 
+    sleep = function (ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    };
+
     log = function (str) {
     	"use strict";
     	document.getElementById("log").innerHTML += "<br>" + str;
-    }
+    };
 
     var state = {
         "w": "20",
@@ -110,18 +137,23 @@
     	this.y = y;
     	this.adjacentNodes = [];
     	this.immediatePredecessors = [];
-    	this.hasBeenQueued = false;
     	if (stepsFromRobot === undefined) {
         	this.stepsFromRobot = Number.POSITIVE_INFINITY;
     	} else {
     		this.stepsFromRobot = stepsFromRobot;
     	}
     	this.isTarget = function () {
-    		return this.displayValue !== "." && this.stepsFromRobot !== 0;
+    		return this.displayValue !== "." && this.description !== "happy flower" && this.stepsFromRobot !== 0;
     	};
     	this.addImmediatePredecessor = function (node) {
-    		this.immediatePredecessors.push(node);
+    		if (!this.immediatePredecessors.includes(node)) {
+        		this.immediatePredecessors.push(node);
+    		}
     	};
+    	this.getRandomPredecessor = function () {
+    		var randomPredecessor = Math.floor(Math.random() * this.immediatePredecessors.length);
+    		return this.immediatePredecessors[randomPredecessor];
+    	}
     	this.getAdacentNodes = function () {
 
     		return [];
@@ -134,9 +166,35 @@
     	width: 0,
     	height: 0,
     	container: document.getElementById("garden"),
-    	robot: new Node("<span class='robot'>@</span>","garden-bot",0,0,0),
+    	robot: new Node("<span class='robot'>@</span>","robot",0,0,0),
     	flower: new Node("<span class='flower'>f</span>","flower",8,3),
     	weed: new Node("<span class='weed'>w</span>","weed",7,2),
+    	lastTarget: "",
+
+        getDirtNode: function (x, y) {
+        	"use strict";
+        	return new Node(".","dirt",x,y);
+        },
+
+        getHappyFlowerNode: function (x, y) {
+        	"use strict";
+        	return new Node("<span class='happyflower'>F</span>","happy flower",x,y);
+        },
+
+        // I dislike this function, it suggests the design is seriously flawed
+        resetSteps: function () {
+        	"use strict";
+        	var i, j;
+        	for (i = 0; i < this.height; i++) {
+        		for (j = 0; j < this.width; j++) {
+        			if (this.node[i][j].description === "robot") {
+        				this.node[i][j].stepsFromRobot = 0;
+        			} else {
+            			this.node[i][j].stepsFromRobot = Number.POSITIVE_INFINITY;
+        			}
+        		}
+        	}
+        },
 
     	acquireTarget: function () {
             "use strict";
@@ -146,31 +204,102 @@
             var currentNode;
             var node;
 
-            log("Acquiring target...");
-            console.log(isTargetAcquired);
-            console.log(queue);
-            console.log(this.robot);
+            this.resetSteps();
+
+            log("Finding a plant...");
             while (!isTargetAcquired && queue.length > 0) {
                 currentNode = queue.shift();
-                console.log("checking node" + currentNode.x + "," + currentNode.y);
+                console.log(currentNode);
                 for (node of this.getAdacentNodes(currentNode)) {
+
                 	if (node.isTarget()) {
-                		console.log("found target");
-                		log("Target acquired: " + node.description + " at " + node.x + "," + node.y);
+                		node.addImmediatePredecessor(currentNode);
+                		log("Plant found: " + node.description + " at " + node.x + "," + node.y);
                 		targetNode = node;
                 		isTargetAcquired = true;
                 		break;
                 	}
-                	if (!node.hasBeenQueued && node.stepsFromRobot > currentNode.stepsFromRobot) {
+                	if (node.stepsFromRobot > currentNode.stepsFromRobot) {
                 		node.stepsFromRobot = currentNode.stepsFromRobot + 1;
                 		node.addImmediatePredecessor(currentNode);
                 		queue.push(node);
-                		node.hasBeenQueued = true;
                 	}
                 }
             }
+
+            if (!isTargetAcquired) {
+            	log("There are currently no plants that need attention.");
+            }
+
+            this.lastTarget = targetNode;
             return targetNode;
     	},
+
+        removeWeed: function (targetNode) {
+        	"use strict";
+        	var node = targetNode;
+
+        	if (node === undefined) {
+        		node = this.lastTarget;
+        	}
+
+        	if (node.description === "weed") {
+        		this.node[node.y][node.x] = this.getDirtNode();
+        		log("Weed exterminated!");
+        		this.draw();
+        	} else {
+        		log("There's no weed here.");
+        	}
+        },
+
+        waterFlower: function (targetNode) {
+        	"use strict";
+        	var node = targetNode;
+
+        	if (node === undefined) {
+        		node = this.lastTarget;
+        	}
+
+        	if (node.description === "flower") {
+        		this.node[node.y][node.x] = this.getHappyFlowerNode();
+        		log("Watered flower. Look, it grew!");
+        		this.draw();
+        	} else {
+        		log("There's no flower here.");
+        	}
+        },
+
+        approachTarget: async function (targetNode) {
+        	"use strict";
+        	var path = [];
+        	var node = targetNode;
+        	var predecessor;
+        	
+        	if (node === undefined) {
+        		node = this.lastTarget;
+        	}
+
+        	while (node !== this.robot) {
+        		predecessor = node.getRandomPredecessor();
+        		path.push(predecessor);
+        		node = predecessor;
+        	}
+            
+            while (path.length > 0) {
+            	await sleep(500);
+            	this.node[this.robot.y][this.robot.x] = this.getDirtNode(this.robot.x, this.robot.y)
+	        	node = path.pop();
+	        	node.displayValue = '<span class="robot">@</span>';
+	        	node.description = "robot";
+	        	node.stepsFromRobot = 0;
+	        	this.robot = node;
+	        	this.node[node.y][node.x] = this.robot;
+	        	this.draw();
+            }
+
+            log("Arrived at target plant");
+
+        },
 
         getAdacentNodes: function (node) {
             "use strict";
@@ -213,7 +342,7 @@
             return adjacentNodes;
         },
 
-    	draw: function (w, h, str) {
+        create: function (w, h, str) {
     		"use strict";
     		var content = "";
 		    var i = 0;
@@ -221,23 +350,32 @@
 		    this.width = w;
 		    this.height = h;
 		    this.char = str.split("");
-		    for (i = 0; i < h; i += 1) {
+		    for (i = 0; i < this.height; i += 1) {
 		    	this.node.push([]);
-		    	for (j = 0; j < w; j += 1) {
+		    	for (j = 0; j < this.width; j += 1) {
 		    		if (this.robot.x === j && this.robot.y === i) {
 		    			this.node[i].push(this.robot);
-		    			content += this.robot.displayValue;
 		    		} else if (this.flower.x === j && this.flower.y === i) {
 		    			this.node[i].push(this.flower);
-		    			content += this.flower.displayValue;
 		    		} else if (this.weed.x === j && this.weed.y === i) {
 		    			this.node[i].push(this.weed);
-		    			content += this.weed.displayValue;
 		    		} else {
 		    			this.node[i].push(new Node(".", "dirt", j, i));
-    		    		content += this.char[(i * w) + j];
 		    		}
 
+		    	}
+		    }
+		    this.draw();
+		},
+
+    	draw: function () {
+    		"use strict";
+    		var content = "";
+		    var i = 0;
+		    var j = 0;
+		    for (i = 0; i < this.height; i += 1) {
+		    	for (j = 0; j < this.width; j += 1) {
+		    		content += this.node[i][j].displayValue;
 		    	}
 		    	content += "<br>";
 		    }
@@ -245,7 +383,7 @@
     	}
     }
 
-    garden.draw(state.w, state.h, state.str);
+    garden.create(state.w, state.h, state.str);
 </script>
 
 </body>
