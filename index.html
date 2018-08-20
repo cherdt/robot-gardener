@@ -5,6 +5,13 @@
 <title>Garden-Bot: a flood-fill demo</title>
 
 <style type="text/css">
+    #score {
+    	background-color: black;
+    	color: #eee;
+    	font-family: monospace;
+    	font-size: xx-large;
+    	font-weight: bold;
+    }
     #garden { 
     	background-color: green;
     	color: yellow;
@@ -59,6 +66,10 @@
 	<li>F - a happy flower</li>
 </ul>
 
+<div id="score">
+	Points: <span id="points">0</span>
+</div>
+
 <div id="garden">
 
 </div>
@@ -71,6 +82,10 @@
 
 <div id="log">
 </div>
+
+<hr>
+
+<p>Questions? Comments? Ask chris @ osric . com</p>
 
 <script type="text/javascript">
 
@@ -158,18 +173,43 @@
 
     		return [];
     	}
-    }
+    };
+
+	function Flower(x, y) {
+	    Node.call(this, "<span class='flower'>f</span>", "flower", x, y);
+	};
+
+	function Weed(x, y) {
+	    Node.call(this, "<span class='weed'>w</span>", "weed", x, y);
+	};
 
     var garden = {
     	char: "",
     	node: [],
     	width: 0,
     	height: 0,
+    	points: 0,
     	container: document.getElementById("garden"),
     	robot: new Node("<span class='robot'>@</span>","robot",0,0,0),
-    	flower: new Node("<span class='flower'>f</span>","flower",8,3),
-    	weed: new Node("<span class='weed'>w</span>","weed",7,2),
+    	flower: {}, //new Node("<span class='flower'>f</span>","flower",18,3),
+    	weed: {}, //new Node("<span class='weed'>w</span>","weed",19,5),
     	lastTarget: "",
+
+        // returns a matrix of zeroes
+    	getFlagMatrix: function () {
+    		"use strict";
+    		var matrix = [];
+    		var i, j;
+
+    		for (i = 0; i < this.height; i = i + 1) {
+    			matrix.push([]);
+	    		for (j = 0; j < this.width; j = j + 1) {
+                    matrix[i].push(0);
+	    		}
+    		}
+
+    		return matrix;
+    	},
 
         getDirtNode: function (x, y) {
         	"use strict";
@@ -179,6 +219,11 @@
         getHappyFlowerNode: function (x, y) {
         	"use strict";
         	return new Node("<span class='happyflower'>F</span>","happy flower",x,y);
+        },
+
+        getWeedNode: function (x, y) {
+        	"use strict";
+        	return new Weed(x, y);
         },
 
         // I dislike this function, it suggests the design is seriously flawed
@@ -203,6 +248,7 @@
             var queue = [this.robot];
             var currentNode;
             var node;
+            var queuedMatrix = this.getFlagMatrix();
 
             this.resetSteps();
 
@@ -211,7 +257,7 @@
                 currentNode = queue.shift();
                 console.log(currentNode);
                 for (node of this.getAdacentNodes(currentNode)) {
-
+                    console.log(node);
                 	if (node.isTarget()) {
                 		node.addImmediatePredecessor(currentNode);
                 		log("Plant found: " + node.description + " at " + node.x + "," + node.y);
@@ -219,9 +265,10 @@
                 		isTargetAcquired = true;
                 		break;
                 	}
-                	if (node.stepsFromRobot > currentNode.stepsFromRobot) {
+                	if (node.stepsFromRobot > currentNode.stepsFromRobot && queuedMatrix[node.y][node.x] === 0) {
                 		node.stepsFromRobot = currentNode.stepsFromRobot + 1;
                 		node.addImmediatePredecessor(currentNode);
+                		queuedMatrix[node.y][node.x] = 1;
                 		queue.push(node);
                 	}
                 }
@@ -229,9 +276,12 @@
 
             if (!isTargetAcquired) {
             	log("There are currently no plants that need attention.");
+            	log("You win!");
             }
 
             this.lastTarget = targetNode;
+            console.log("target node");
+            console.log(targetNode);
             return targetNode;
     	},
 
@@ -244,7 +294,9 @@
         	}
 
         	if (node.description === "weed") {
-        		this.node[node.y][node.x] = this.getDirtNode();
+        		this.node[node.y][node.x] = this.getDirtNode(node.x, node.y);
+        		//this.lastTarget = this.node[node.y][node.x];
+        		this.addToScore(15);
         		log("Weed exterminated!");
         		this.draw();
         	} else {
@@ -261,7 +313,8 @@
         	}
 
         	if (node.description === "flower") {
-        		this.node[node.y][node.x] = this.getHappyFlowerNode();
+        		this.node[node.y][node.x] = this.getHappyFlowerNode(node.x, node.y);
+        		this.addToScore(25);
         		log("Watered flower. Look, it grew!");
         		this.draw();
         	} else {
@@ -277,6 +330,9 @@
         	
         	if (node === undefined) {
         		node = this.lastTarget;
+        		if (node === undefined) {
+        			return;
+        		}
         	}
 
         	while (node !== this.robot) {
@@ -314,7 +370,7 @@
             	// center
 				adjacentNodes.push(this.node[node.y - 1][node.x]);
             	// right
-            	if (node.x + 1 <= this.width) {
+            	if (node.x + 1 < this.width) {
 	            adjacentNodes.push(this.node[node.y - 1][node.x + 1]);
 	            }
             }
@@ -335,18 +391,49 @@
             	// center
 				adjacentNodes.push(this.node[node.y + 1][node.x]);
             	// right
-            	if (node.x + 1 <= this.width) {
+            	if (node.x + 1 < this.width) {
 	                adjacentNodes.push(this.node[node.y + 1][node.x + 1]);
 	            }
             }
             return adjacentNodes;
         },
 
+        addToScore: function (n) {
+        	"use strict";
+        	document.getElementById("points").textContent = parseInt(document.getElementById("points").textContent, 10) + n;
+        },
+
+        generateRandomPlants: function () {
+        	"use strict";
+        	var num = Math.floor(Math.random() * 10) + 1;
+        	var threshhold = .5;
+        	var pct;
+        	var i;
+        	var x;
+        	var y;
+        	var plants = [];
+
+        	for (i = 0; i <= num; i = i + 1) {
+        		pct = Math.random();
+        		x = Math.floor(Math.random() * (this.width - 1)) + 1;
+        		y = Math.floor(Math.random() * (this.height - 1)) + 1;
+        		if (pct > threshhold) {
+        			plants.push(new Flower(x, y));
+        		} else {
+        			plants.push(new Weed(x, y));
+        		}
+        	}
+
+        	return plants;
+        },
+
+
         create: function (w, h, str) {
     		"use strict";
     		var content = "";
 		    var i = 0;
 		    var j = 0;
+		    var plant;
 		    this.width = w;
 		    this.height = h;
 		    this.char = str.split("");
@@ -365,6 +452,12 @@
 
 		    	}
 		    }
+
+            // replace dirt with random plants
+		    for (plant of this.generateRandomPlants()) {
+		    	this.node[plant.y][plant.x] = plant;
+		    }
+
 		    this.draw();
 		},
 
