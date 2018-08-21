@@ -157,12 +157,15 @@
     		this.stepsFromRobot = stepsFromRobot;
     	}
     	this.isTarget = function () {
-    		return this.displayValue !== "." && this.description !== "happy flower" && this.stepsFromRobot !== 0;
+    		return this.description !== "dirt" && this.description !== "happy flower" && this.stepsFromRobot !== 0;
     	};
     	this.addImmediatePredecessor = function (node) {
     		if (!this.immediatePredecessors.includes(node)) {
         		this.immediatePredecessors.push(node);
     		}
+    	};
+    	this.resetImmediatePredecessors = function () {
+    		this.immediatePredecessors = [];
     	};
     	this.getRandomPredecessor = function () {
     		var randomPredecessor = Math.floor(Math.random() * this.immediatePredecessors.length);
@@ -183,6 +186,7 @@
 	};
 
     var garden = {
+    	debug: false,
     	char: "",
     	node: [],
     	width: 0,
@@ -195,7 +199,7 @@
     	lastTarget: "",
 
         // returns a matrix of zeroes
-    	getFlagMatrix: function () {
+    	getFlagMatrix: function (initialVal) {
     		"use strict";
     		var matrix = [];
     		var i, j;
@@ -203,7 +207,7 @@
     		for (i = 0; i < this.height; i = i + 1) {
     			matrix.push([]);
 	    		for (j = 0; j < this.width; j = j + 1) {
-                    matrix[i].push(0);
+                    matrix[i].push(initialVal);
 	    		}
     		}
 
@@ -225,7 +229,7 @@
         	return new Weed(x, y);
         },
 
-        // I dislike this function, it suggests the design is seriously flawed
+        // I dislike this function, it suggests the design is seriously flawed?
         resetSteps: function () {
         	"use strict";
         	var i, j;
@@ -240,6 +244,18 @@
         	}
         },
 
+        // clear list of immediate predecessors from all nodes
+        resetPredecessors: function () {
+        	"use strict";
+        	var i, j;
+        	for (i = 0; i < this.height; i++) {
+        		for (j = 0; j < this.width; j++) {
+        			this.node[i][j].resetImmediatePredecessors();
+        		}
+        	}
+        },
+
+        // Find the next closest target plant
     	acquireTarget: function () {
             "use strict";
             var isTargetAcquired = false;
@@ -247,16 +263,18 @@
             var queue = [this.robot];
             var currentNode;
             var node;
-            var queuedMatrix = this.getFlagMatrix();
+            var queuedMatrix = this.getFlagMatrix(0);
+            var stepsMatrix = this.getFlagMatrix(Number.POSITIVE_INFINITY);
 
-            this.resetSteps();
+            //this.resetSteps();
+            stepsMatrix[this.robot.y][this.robot.x] = 0;
+
+            this.resetPredecessors();
 
             log("Finding a plant...");
             while (!isTargetAcquired && queue.length > 0) {
                 currentNode = queue.shift();
-                console.log(currentNode);
                 for (node of this.getAdacentNodes(currentNode)) {
-                    console.log(node);
                 	if (node.isTarget()) {
                 		node.addImmediatePredecessor(currentNode);
                 		log("Plant found: " + node.description + " at " + node.x + "," + node.y);
@@ -264,8 +282,12 @@
                 		isTargetAcquired = true;
                 		break;
                 	}
-                	if (node.stepsFromRobot > currentNode.stepsFromRobot && queuedMatrix[node.y][node.x] === 0) {
-                		node.stepsFromRobot = currentNode.stepsFromRobot + 1;
+                	if (stepsMatrix[node.y][node.x] > stepsMatrix[currentNode.y][currentNode.x] && queuedMatrix[node.y][node.x] === 0) {
+                		stepsMatrix[node.y][node.x] = stepsMatrix[currentNode.y][currentNode.x] + 1;
+                		// show the number of steps from the robot
+                		if (this.debug) {
+                			node.displayValue = stepsMatrix[node.y][node.x];
+                		}
                 		node.addImmediatePredecessor(currentNode);
                 		queuedMatrix[node.y][node.x] = 1;
                 		queue.push(node);
@@ -279,8 +301,6 @@
             }
 
             this.lastTarget = targetNode;
-            console.log("target node");
-            console.log(targetNode);
             return targetNode;
     	},
 
@@ -321,6 +341,7 @@
         	}
         },
 
+        // Move the robot closer to the target plant, one step at a time
         approachTarget: async function (targetNode) {
         	"use strict";
         	var path = [];
