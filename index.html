@@ -11,6 +11,7 @@
     	font-family: monospace;
     	font-size: xx-large;
     	font-weight: bold;
+        width: 20em;
     }
     #garden { 
     	background-color: green;
@@ -26,6 +27,7 @@
     	font-family: monospace;
     	height: 20em;
     	overflow-y: scroll;
+        width: 40em;
     }
     .robot {
     	background-color: black;
@@ -117,7 +119,9 @@
 
     log = function (str) {
     	"use strict";
-    	document.getElementById("log").innerHTML += "<br>" + str;
+        var logElement = document.getElementById("log");
+    	logElement.innerHTML += "<br>" + str;
+        logElement.scrollTop = logElement.scrollHeight;
     };
 
     var state = {
