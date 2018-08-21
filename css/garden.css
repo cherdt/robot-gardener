@@ -1,0 +1,47 @@
+#score {
+	background-color: black;
+	color: #eee;
+	font-family: monospace;
+	font-size: xx-large;
+	font-weight: bold;
+    width: 20em;
+}
+#garden { 
+	background-color: green;
+	color: yellow;
+	font-family: monospace;
+	font-size: xx-large;
+	text-align: center;
+	width: 20em;
+}
+#log {
+	background-color: black;
+	color: #eee;
+	font-family: monospace;
+	height: 20em;
+	overflow-y: scroll;
+    width: 40em;
+}
+.robot {
+	background-color: black;
+	font-weight: bold;
+}
+.flower {
+	background-color: #333;
+	color: #933;
+	font-weight: bold;
+}
+.happyflower {
+	background-color: black;
+	color: red;
+	font-weight: bold;
+}
+.weed {
+	background-color: black;
+	color: yellow;
+	font-weight: bold;
+}
+.highlight {
+	background-color: pink;
+	color: black;
+}
