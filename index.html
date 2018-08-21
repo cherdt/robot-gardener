@@ -161,8 +161,15 @@
     		this.stepsFromRobot = stepsFromRobot;
     	}
     	this.isTarget = function () {
-    		return this.description !== "dirt" && this.description !== "happy flower" && this.stepsFromRobot !== 0;
+    		return this.description !== "dirt" && 
+                   this.description !== "happy flower" && 
+                   this.stepsFromRobot !== 0;
     	};
+        this.isBlocked = function () {
+            return this.description === "wall" || 
+                   this.description === "happy flower" || 
+                   this.stepsFromRobot === 0;
+        };
     	this.addImmediatePredecessor = function (node) {
     		if (!this.immediatePredecessors.includes(node)) {
         		this.immediatePredecessors.push(node);
@@ -286,6 +293,9 @@
                 		isTargetAcquired = true;
                 		break;
                 	}
+                    if (node.isBlocked()) {
+                        continue;
+                    }
                 	if (stepsMatrix[node.y][node.x] > stepsMatrix[currentNode.y][currentNode.x] && queuedMatrix[node.y][node.x] === 0) {
                 		stepsMatrix[node.y][node.x] = stepsMatrix[currentNode.y][currentNode.x] + 1;
                 		// show the number of steps from the robot
