@@ -32,6 +32,7 @@ log = function (str) {
     logElement.scrollTop = logElement.scrollHeight;
 };
 
+// This default state can be overwritten by the URL
 var state = {
     "w": "20",
     "h": "10",
@@ -70,6 +71,7 @@ function Node (displayValue, description, x, y, stepsFromRobot) {
 	}
 	this.isTarget = function () {
 		return this.description !== "dirt" && 
+               this.description !== "wall" && 
                this.description !== "happy flower" && 
                this.stepsFromRobot !== 0;
 	};
@@ -96,8 +98,20 @@ function Node (displayValue, description, x, y, stepsFromRobot) {
 	}
 };
 
+function Dirt(x, y) {
+    Node.call(this, ".", "dirt", x, y);
+};
+
 function Flower(x, y) {
     Node.call(this, "<span class='flower'>f</span>", "flower", x, y);
+};
+
+function HappyFlower(x, y) {
+    Node.call(this, "<span class='happyflower'>F</span>", "happy flower", x, y);
+};
+
+function Wall(x, y) {
+    Node.call(this, "#", "wall", x, y);
 };
 
 function Weed(x, y) {
@@ -132,21 +146,6 @@ var garden = {
 
 		return matrix;
 	},
-
-    getDirtNode: function (x, y) {
-    	"use strict";
-    	return new Node(".","dirt",x,y);
-    },
-
-    getHappyFlowerNode: function (x, y) {
-    	"use strict";
-    	return new Node("<span class='happyflower'>F</span>","happy flower",x,y);
-    },
-
-    getWeedNode: function (x, y) {
-    	"use strict";
-    	return new Weed(x, y);
-    },
 
     // I dislike this function, it suggests the design is seriously flawed?
     resetSteps: function () {
@@ -235,7 +234,7 @@ var garden = {
     	}
 
     	if (node.description === "weed") {
-    		this.node[node.y][node.x] = this.getDirtNode(node.x, node.y);
+    		this.node[node.y][node.x] = new Dirt(node.x, node.y);
     		//this.lastTarget = this.node[node.y][node.x];
     		this.addToScore(15);
     		log("Weed exterminated!");
@@ -254,7 +253,7 @@ var garden = {
     	}
 
     	if (node.description === "flower") {
-    		this.node[node.y][node.x] = this.getHappyFlowerNode(node.x, node.y);
+    		this.node[node.y][node.x] = new HappyFlower(node.x, node.y);
     		this.addToScore(25);
     		log("Watered flower. Look, it grew!");
     		this.draw();
@@ -376,29 +375,36 @@ var garden = {
 	    var i = 0;
 	    var j = 0;
 	    var plant;
+        var char;
 	    this.width = w;
 	    this.height = h;
 	    this.char = str.split("");
+        console.log(str);
 	    for (i = 0; i < this.height; i += 1) {
 	    	this.node.push([]);
 	    	for (j = 0; j < this.width; j += 1) {
+                char = this.char[j * this.width + i];
 	    		if (this.robot.x === j && this.robot.y === i) {
 	    			this.node[i].push(this.robot);
-	    		} else if (this.flower.x === j && this.flower.y === i) {
-	    			this.node[i].push(this.flower);
-	    		} else if (this.weed.x === j && this.weed.y === i) {
-	    			this.node[i].push(this.weed);
+                } else if (char === "#") {
+                    this.node[i].push(new Wall(j, i));
+	    		} else if (char === "f") {
+	    			this.node[i].push(new Flower(j, i));
+	    		} else if (char === "w") {
+	    			this.node[i].push(new Weed(j, i));
 	    		} else {
-	    			this.node[i].push(new Node(".", "dirt", j, i));
+	    			this.node[i].push(new Dirt(j, i));
 	    		}
 
 	    	}
 	    }
 
-        // replace dirt with random plants
-	    for (plant of this.generateRandomPlants()) {
-	    	this.node[plant.y][plant.x] = plant;
-	    }
+        // if no string was specified, replace dirt with random plants
+        if (str.indexOf("f") === -1 && str.indexOf("w") === -1) {
+            for (plant of this.generateRandomPlants()) {
+                this.node[plant.y][plant.x] = plant;
+            }
+        }
 
 	    this.draw();
 	},
