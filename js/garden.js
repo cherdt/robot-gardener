@@ -322,26 +322,27 @@ var garden = {
         var j = 0;
         var plant;
         var char;
+        var node;
         this.container = gardenElement;
         this.width = w;
         this.height = h;
         this.char = str.split("");
-        console.log(str);
         for (i = 0; i < this.height; i += 1) {
             this.node.push([]);
             for (j = 0; j < this.width; j += 1) {
-                char = this.char[j * this.width + i];
+                char = this.char[i * this.width + j];
                 if (this.robot.x === j && this.robot.y === i) {
-                    this.node[i].push(this.robot);
+                    node = this.robot;
                 } else if (char === "#") {
-                    this.node[i].push(new Wall(j, i));
+                    node = new Wall(j, i);
                 } else if (char === "f") {
-                    this.node[i].push(new Flower(j, i));
+                    node = new Flower(j, i);
                 } else if (char === "w") {
-                    this.node[i].push(new Weed(j, i));
+                    node = new Weed(j, i);
                 } else {
-                    this.node[i].push(new Dirt(j, i));
+                    node = new Dirt(j, i);
                 }
+                this.node[i].push(node);
 
             }
         }
