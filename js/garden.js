@@ -183,7 +183,7 @@ var garden = {
 
         if (node.description === "weed") {
             this.node[node.y][node.x] = new Dirt(node.x, node.y);
-            //this.lastTarget = this.node[node.y][node.x];
+            this.lastTarget = this.node[node.y][node.x];
             addToScore(this.weedScore);
             log("Weed exterminated!");
             this.draw();
@@ -202,9 +202,12 @@ var garden = {
 
         if (node.description === "flower") {
             this.node[node.y][node.x] = new HappyFlower(node.x, node.y);
+            this.lastTarget = this.node[node.y][node.x];
             addToScore(this.flowerScore);
             log("Watered flower. Look, it grew!");
             this.draw();
+        } else if (node.description === "happy flower") {
+            log("This flower has already been watered.");
         } else {
             log("There's no flower here.");
         }
