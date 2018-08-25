@@ -1,12 +1,13 @@
 {
   "name": "robot-gardener",
-  "description": "Simple Travis-CI check for JSHint (Code Linting)",
+  "description": "Travis-CI check for JSHint (Code Linting) and QUnit",
   "author": "Chris Herdt",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "devDependencies": {
-    "jshint": "^2.6.0"
+    "jshint": "^2.6.0",
+    "qunit": "^2.6.1"
   },
   "scripts": {
-    "test": "./node_modules/jshint/bin/jshint js/garden.js js/parseqs.js js/start.js"
+    "test": "sh ./scripts/tests.sh"
   }
 }

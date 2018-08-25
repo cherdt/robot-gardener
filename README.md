@@ -11,7 +11,8 @@ https://osric.com/games/robot-gardener/
 Tests
 -----
 
-Currently, just Javascript code-linting with JSHint.
+* Javascript code-linting with JSHint
+* A couple lonley unit tests with QUnit
 
 Why?
 ----

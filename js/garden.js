@@ -1,6 +1,6 @@
 /*jshint esversion: 6 */
 /* jshint unused: false */
-/* globals log, addToScore */
+/* globals log, addToScore, shuffle */
 
 function Node (displayValue, description, x, y, stepsFromRobot) {
     "use strict";
@@ -69,8 +69,6 @@ var garden = {
     points: 0,
     container: {},
     robot: new Node("<span class='robot'>@</span>","robot",0,0,0),
-    flower: {}, //new Node("<span class='flower'>f</span>","flower",18,3),
-    weed: {}, //new Node("<span class='weed'>w</span>","weed",19,5),
     flowerScore: 25,
     weedScore: 15,
     lastTarget: "",
@@ -95,21 +93,6 @@ var garden = {
         return matrix;
     },
 
-    // I dislike this function, it suggests the design is seriously flawed?
-    resetSteps: function () {
-        "use strict";
-        var i, j;
-        for (i = 0; i < this.height; i++) {
-            for (j = 0; j < this.width; j++) {
-                if (this.node[i][j].description === "robot") {
-                    this.node[i][j].stepsFromRobot = 0;
-                } else {
-                    this.node[i][j].stepsFromRobot = Number.POSITIVE_INFINITY;
-                }
-            }
-        }
-    },
-
     // clear list of immediate predecessors from all nodes
     resetPredecessors: function () {
         "use strict";
@@ -128,19 +111,23 @@ var garden = {
         var targetNode;
         var queue = [this.robot];
         var currentNode;
+        var nextStep;
         var node;
         var queuedMatrix = this.getFlagMatrix(0);
         var stepsMatrix = this.getFlagMatrix(Number.POSITIVE_INFINITY);
 
-        //this.resetSteps();
+        // The robot's current position is 0 steps from the robot
         stepsMatrix[this.robot.y][this.robot.x] = 0;
 
+        // Clear the cache of path predecessors from each node
         this.resetPredecessors();
 
         log("Finding a plant...");
         while (!isTargetAcquired && queue.length > 0) {
             currentNode = queue.shift();
-            for (node of this.getAdacentNodes(currentNode)) {
+            nextStep = stepsMatrix[currentNode.y][currentNode.x] + 1;
+
+            for (node of shuffleArray(this.getAdacentNodes(currentNode))) {
                 if (node.isTarget()) {
                     node.addImmediatePredecessor(currentNode);
                     log("Plant found: " + node.description + " at " + node.x + "," + node.y);
@@ -151,15 +138,18 @@ var garden = {
                 if (node.isBlocked()) {
                     continue;
                 }
-                if (stepsMatrix[node.y][node.x] > stepsMatrix[currentNode.y][currentNode.x] && queuedMatrix[node.y][node.x] === 0) {
-                    stepsMatrix[node.y][node.x] = stepsMatrix[currentNode.y][currentNode.x] + 1;
+                if (stepsMatrix[node.y][node.x] > stepsMatrix[currentNode.y][currentNode.x]) {
+                    stepsMatrix[node.y][node.x] = nextStep;
                     // show the number of steps from the robot
                     if (this.debug) {
                         node.displayValue = stepsMatrix[node.y][node.x];
                     }
                     node.addImmediatePredecessor(currentNode);
-                    queuedMatrix[node.y][node.x] = 1;
-                    queue.push(node);
+                    // if this node is not already queued, add it to the queue
+                    if (queuedMatrix[node.y][node.x] === 0) {
+                        queuedMatrix[node.y][node.x] = 1;
+                        queue.push(node);
+                    }
                 }
             }
         }
@@ -213,18 +203,17 @@ var garden = {
         }
     },
 
-    // Move the robot closer to the target plant, one step at a time
-    /* jshint ignore:start */
-    approachTarget: async function (targetNode) {
+    // Find path to target
+    getPathToTarget: function (targetNode) {
         "use strict";
         var path = [];
         var node = targetNode;
         var predecessor;
-        
+
         if (node === undefined) {
             node = this.lastTarget;
             if (node === undefined) {
-                return;
+                return path;
             }
         }
 
@@ -233,16 +222,30 @@ var garden = {
             path.push(predecessor);
             node = predecessor;
         }
+
+        return path;
+    },
+
+    // Move the robot closer to the target plant, one step at a time
+    /* jshint ignore:start */
+    approachTarget: async function (targetNode) {
+        "use strict";
+        var path = this.getPathToTarget(targetNode);
+        var node = targetNode;
         
         while (path.length > 0) {
             await this.sleep(500);
+            // Replace current robot with dirt
             this.node[this.robot.y][this.robot.x] = new Dirt(this.robot.x, this.robot.y)
+            // Get the next step in the path
             node = path.pop();
+            // Place the robot on the next step
             node.displayValue = '<span class="robot">@</span>';
             node.description = "robot";
             node.stepsFromRobot = 0;
             this.robot = node;
             this.node[node.y][node.x] = this.robot;
+            // Re-draw garden
             this.draw();
         }
 
